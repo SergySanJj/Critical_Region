@@ -5,8 +5,11 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 
 public class FakeLock implements Lock {
+    private int lockCount = 0;
+    private int unlockCount = 0;
     @Override
     public void lock() { // No action on lock
+        lockCount++;
     }
 
     @Override
@@ -19,21 +22,32 @@ public class FakeLock implements Lock {
     }
 
     @Override
-    public boolean tryLock() { // No action on tryLock
+    public boolean tryLock() {
+        lock();
         return true;
     }
 
     @Override
-    public boolean tryLock(long l, TimeUnit timeUnit) throws InterruptedException { // No action on tryLock
+    public boolean tryLock(long l, TimeUnit timeUnit) throws InterruptedException {
+        lock();
         return true;
     }
 
     @Override
     public void unlock() { // No action on unlock
+        unlockCount++;
     }
 
     @Override
     public Condition newCondition() { // Left empty
         return null;
+    }
+
+    public int getLockCount() {
+        return lockCount;
+    }
+
+    public int getUnlockCount() {
+        return unlockCount;
     }
 }
