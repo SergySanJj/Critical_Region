@@ -2,7 +2,7 @@ plugins {
     id 'java'
 }
 
-group 'CriticalRegion'
+group 'com.CriticalRegion'
 version '1.0-SNAPSHOT'
 
 sourceCompatibility = 1.8

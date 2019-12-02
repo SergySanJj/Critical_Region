@@ -27,3 +27,5 @@ build/
 .idea/
 
 .gradle/
+
+!CriticalRegion/gradle/wrapper/gradle-wrapper.jar
