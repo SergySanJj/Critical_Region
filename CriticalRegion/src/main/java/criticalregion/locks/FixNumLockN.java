@@ -6,14 +6,16 @@ import criticalregion.locks.exceptions.FixnumLockThredIdException;
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class FixNumLockN implements FixNumLock{
-    protected int maxThreadsCount = 2;
+public abstract class FixNumLockN implements FixNumLock {
+    protected int maxThreadsCount;
     protected List<Long> threads;
 
     protected final Object operationMutex = new Object();
 
-    private FixNumLockN(){}
-    public  FixNumLockN(int N) {
+    private FixNumLockN() {
+    }
+
+    public FixNumLockN(int N) {
         maxThreadsCount = N;
         threads = new ArrayList<>();
     }
@@ -69,5 +71,15 @@ public abstract class FixNumLockN implements FixNumLock{
             }
         }
         throw new FixnumLockThredIdException("Can not find thread with id: " + currentThreadId + " in " + threads.toString());
+    }
+
+    public int currentlyRegisteredCount() {
+        return threads.size();
+    }
+
+    public void reset() {
+        synchronized (operationMutex) {
+            threads.clear();
+        }
     }
 }
