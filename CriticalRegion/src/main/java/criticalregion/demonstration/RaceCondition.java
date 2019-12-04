@@ -6,41 +6,30 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class RaceCondition implements Runnable {
-    public static final int INC_LIMIT = 1000;
-    public static final int LONG_CHECK_LIMIT = 10;
+    public static final int TIMES_TO_RUN = 1000;
+    public static final int INC_LIMIT = 1000000;
     private int counter = 0;
-    private int wrongCount = 0;
 
     private Thread upcounter = new Thread(() -> {
         int ranTimes = 0;
-        while (ranTimes < INC_LIMIT) {
-            try {
-                Thread.currentThread().sleep(1);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+        while (ranTimes < TIMES_TO_RUN) {
+            int incTimes = 0;
+            while (incTimes < INC_LIMIT) {
+                counter++;
+                incTimes++;
             }
-            // critical region start
-            counter++;
-            // critical region end
             ranTimes++;
         }
     });
 
     private Thread longCheck = new Thread(() -> {
         int ranTimes = 0;
-        while (ranTimes < LONG_CHECK_LIMIT) {
-            // critical region start
-            int counterCopy = counter;
-            try {
-                Thread.currentThread().sleep(10);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+        while (ranTimes < TIMES_TO_RUN) {
+            int incTimes = 0;
+            while (incTimes < INC_LIMIT) {
+                counter--;
+                incTimes++;
             }
-            if (counterCopy != counter)
-            {
-                wrongCount++;
-            }
-            // critical region end
             ranTimes++;
         }
     });
@@ -55,11 +44,15 @@ public class RaceCondition implements Runnable {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        Logger.getLogger("Race Condition").log(Level.INFO, String.format("Wrong count %d", wrongCount));
+        Logger.getLogger("Race Condition").log(Level.INFO, String.format("Counter result: %d; Expected %d", counter, 0));
     }
 
-    public int countWrong() {
-        return wrongCount;
+    public int getCounter() {
+        return counter;
+    }
+
+    public boolean isCounterResultCorrect() {
+        return counter == 0;
     }
 
     public boolean allFinished() {

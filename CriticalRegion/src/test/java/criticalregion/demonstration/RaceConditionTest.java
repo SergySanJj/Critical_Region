@@ -11,6 +11,6 @@ public class RaceConditionTest {
         RaceCondition raceCondition = new RaceCondition();
         raceCondition.run();
         Assert.assertTrue(raceCondition.allFinished());
-        Assert.assertTrue(raceCondition.countWrong() > 0);
+        Assert.assertFalse(raceCondition.isCounterResultCorrect());
     }
 }

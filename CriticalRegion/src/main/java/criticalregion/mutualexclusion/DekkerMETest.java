@@ -7,18 +7,18 @@ public class DekkerMETest extends MutualExclusionTest<DekkerLock> {
         super();
     }
 
-    @Prephase
-    public void registerCurrentThread() {
+    @Override
+    public void runPrephaseActions() {
         testableLock.register(Thread.currentThread());
     }
 
-    @LockAction
-    public void onLock(){
+    @Override
+    public void runLockActions(){
         testableLock.lock();
     }
 
-    @UnlockAction
-    public void onUnLock(){
+    @Override
+    public void runUnlockActions(){
         testableLock.unlock();
     }
 }

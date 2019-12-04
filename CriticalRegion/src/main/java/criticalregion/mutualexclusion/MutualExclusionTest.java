@@ -8,74 +8,46 @@ import java.util.concurrent.locks.Lock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-@Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.METHOD})
-@interface LockAction {
-    boolean enabled() default true;
-}
-
-@Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.METHOD})
-@interface UnlockAction {
-    boolean enabled() default true;
-}
-
-@Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.METHOD})
-@interface Prephase {
-    boolean enabled() default true;
-}
 
 public abstract class MutualExclusionTest<T extends Lock> {
-    protected int INC_LIMIT = 1000;
-    protected int LONG_CHECK_LIMIT = 10;
+    protected int WAITING_LIMIT = 1000; // millis
+    public static final int TIMES_TO_RUN = 1000;
+    public static final int INC_LIMIT = 1000000;
     private int counter;
-    private int wrongCount;
     protected T testableLock;
 
-    private List<Method> LockMethods;
-    private List<Method> UnlockMethods;
-    private List<Method> PrephaseMethods;
 
     public final boolean providesMutualExclusion(T testableLock) {
-        initAnnotated();
         counter = 0;
-        wrongCount = 0;
         this.testableLock = testableLock;
 
         Thread upcounter = new Thread(() -> {
-            int ranTimes = 0;
             runPrephaseActions();
-            while (ranTimes < INC_LIMIT) {
-                runLockActions();
-                try {
-                    Thread.currentThread().sleep(1);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+            int ranTimes = 0;
+            while (ranTimes < TIMES_TO_RUN) {
+                int incTimes = 0;
+                testableLock.lock();
+                while (incTimes < INC_LIMIT) {
+                    counter++;
+                    incTimes++;
                 }
-                counter++;
-                runUnlockActions();
                 ranTimes++;
+                testableLock.unlock();
             }
         });
 
         Thread writeIfEven = new Thread(() -> {
-            int ranTimes = 0;
             runPrephaseActions();
-            while (ranTimes < LONG_CHECK_LIMIT) {
-                runLockActions();
-                int counterCopy = counter;
-                try {
-                    Thread.currentThread().sleep(10);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+            int ranTimes = 0;
+            while (ranTimes < TIMES_TO_RUN) {
+                int incTimes = 0;
+                testableLock.lock();
+                while (incTimes < INC_LIMIT) {
+                    counter--;
+                    incTimes++;
                 }
-                if (counterCopy != counter)
-                {
-                    wrongCount++;
-                }
-                runUnlockActions();
                 ranTimes++;
+                testableLock.unlock();
             }
         });
 
@@ -83,65 +55,34 @@ public abstract class MutualExclusionTest<T extends Lock> {
         writeIfEven.start();
 
         try {
-            upcounter.join();
-            writeIfEven.join();
+            upcounter.join(WAITING_LIMIT);
+            writeIfEven.join(WAITING_LIMIT);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+        Logger.getLogger("ME").log(Level.INFO, String.format("%s counted %d, expected %d", this.getClass().getName(), counter, 0));
 
         if (writeIfEven.isAlive() || upcounter.isAlive()) {
             Logger.getLogger("ME").log(Level.INFO, "Threads not finished");
             return false;
         }
 
-        Logger.getLogger("ME").log(Level.INFO, String.format("%s counted wrong %d", this.getClass().getName(), wrongCount));
-        if (countOdd() == 0)
+
+        if (getCount() == 0)
             return true;
         return false;
     }
 
-    private void runLockActions() {
-        runMethods(LockMethods);
+    protected abstract void runLockActions();
+    protected abstract void runUnlockActions();
+    protected abstract void runPrephaseActions();
+
+
+    private int getCount() {
+        return counter;
     }
 
-    private void runUnlockActions() {
-        runMethods(UnlockMethods);
-    }
-
-    private void runPrephaseActions() {
-        runMethods(PrephaseMethods);
-    }
-
-    private void runMethods(List<Method> methods) {
-        for (Method method : methods) {
-            try {
-                method.invoke(this);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    private void initAnnotated() {
-        LockMethods = new ArrayList<>();
-        UnlockMethods = new ArrayList<>();
-        PrephaseMethods = new ArrayList<>();
-
-        for (Method method : this.getClass().getDeclaredMethods()) {
-            if (method.isAnnotationPresent(LockAction.class)) {
-                LockMethods.add(method);
-            }
-            if (method.isAnnotationPresent(UnlockAction.class)) {
-                UnlockMethods.add(method);
-            }
-            if (method.isAnnotationPresent(Prephase.class)) {
-                PrephaseMethods.add(method);
-            }
-        }
-
-    }
-
-    private int countOdd() {
-        return wrongCount;
+    public boolean checkIfCounterCorrect() {
+        return counter == 0;
     }
 }
