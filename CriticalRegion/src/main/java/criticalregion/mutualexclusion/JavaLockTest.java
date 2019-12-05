@@ -1,10 +1,17 @@
 package criticalregion.mutualexclusion;
 
-import criticalregion.locks.FakeLock;
+import criticalregion.locks.DekkerLock;
 
-public class FakeMETest extends MutualExclusionTest<FakeLock> {
+import java.util.concurrent.locks.Lock;
+
+public class JavaLockTest extends MutualExclusionTest<Lock> {
+    public JavaLockTest() {
+        super();
+    }
+
     @Override
     public void runPrephaseActions() {
+
     }
 
     @Override
