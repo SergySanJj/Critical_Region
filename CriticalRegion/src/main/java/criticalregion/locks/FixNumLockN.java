@@ -1,7 +1,7 @@
 package criticalregion.locks;
 
-import criticalregion.locks.exceptions.FixnumLockThredCountException;
-import criticalregion.locks.exceptions.FixnumLockThredIdException;
+import criticalregion.locks.exceptions.FixnumLockThreadCountException;
+import criticalregion.locks.exceptions.FixnumLockThreadIdException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,7 +34,7 @@ public abstract class FixNumLockN implements FixNumLock {
     public void register(long threadId) {
         synchronized (operationMutex) {
             if (threads.size() + 1 > maxThreadsCount)
-                throw new FixnumLockThredCountException("Expected maximum " + maxThreadsCount + " threads but got " + (threads.size() + 1));
+                throw new FixnumLockThreadCountException("Expected maximum " + maxThreadsCount + " threads but got " + (threads.size() + 1));
 
             threads.add(threadId);
         }
@@ -58,7 +58,7 @@ public abstract class FixNumLockN implements FixNumLock {
             if (pendingToBeUnregistered != null)
                 threads.remove(pendingToBeUnregistered);
             else
-                throw new FixnumLockThredIdException("Can not find thread with id: " + threadId + " in " + threads.toString());
+                throw new FixnumLockThreadIdException("Can not find thread with id: " + threadId + " in " + threads.toString());
         }
     }
 
@@ -70,7 +70,7 @@ public abstract class FixNumLockN implements FixNumLock {
                 return i;
             }
         }
-        throw new FixnumLockThredIdException("Can not find thread with id: " + currentThreadId + " in " + threads.toString());
+        throw new FixnumLockThreadIdException("Can not find thread with id: " + currentThreadId + " in " + threads.toString());
     }
 
     public int currentlyRegisteredCount() {
