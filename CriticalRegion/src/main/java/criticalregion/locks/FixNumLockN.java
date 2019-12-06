@@ -6,11 +6,12 @@ import criticalregion.locks.exceptions.FixnumLockThreadIdException;
 import java.util.ArrayList;
 import java.util.List;
 
+
 public abstract class FixNumLockN implements FixNumLock {
     protected int maxThreadsCount;
+    protected int count;
     protected List<Long> threads;
-
-    protected final Object operationMutex = new Object();
+    protected ThreadLocal<Integer> localId = ThreadLocal.withInitial(() -> -1);
 
     private FixNumLockN() {
     }
@@ -22,64 +23,69 @@ public abstract class FixNumLockN implements FixNumLock {
 
     @Override
     public int threadsCount() {
-        return threads.size();
+        return count;
     }
 
     @Override
-    public void register(Thread thread) {
-        register(thread.getId());
-    }
-
-    @Override
-    public void register(long threadId) {
-        synchronized (operationMutex) {
-            if (threads.size() + 1 > maxThreadsCount)
-                throw new FixnumLockThreadCountException("Expected maximum " + maxThreadsCount + " threads but got " + (threads.size() + 1));
-
-            threads.add(threadId);
+    public void register() {
+        long currentThreadId = Thread.currentThread().getId();
+        synchronized (this) {
+            if (localId.get() == -1) {
+                if (count < maxThreadsCount) {
+                    localId.set(count);
+                    count++;
+                    boolean done = false;
+                    for (int i = 0; i < threads.size() && !done; ++i) {
+                        if (threads.get(i) == -1) {
+                            localId.set(i);
+                            threads.set(i, currentThreadId);
+                            done = true;
+                        }
+                    }
+                    if (!done) {
+                        localId.set(threads.size());
+                        threads.add(currentThreadId);
+                    }
+                } else
+                    throw new FixnumLockThreadCountException("Expected maximum " + maxThreadsCount + " threads but got " + (count + 1));
+            }
         }
     }
 
-    @Override
-    public void unregister(Thread thread) {
-        unregister(thread.getId());
-    }
 
     @Override
-    public void unregister(long threadId) {
-        Long pendingToBeUnregistered = null;
-        synchronized (operationMutex) {
-            for (long thID : threads) {
-                if (thID == threadId) {
-                    pendingToBeUnregistered = thID;
-                    break;
-                }
+    public void unregister() {
+        long currentThreadId = Thread.currentThread().getId();
+        synchronized (this) {
+            if (localId.get() != -1 && threads.get(localId.get()) == currentThreadId) {
+                threads.set(localId.get(), -1L);
+                localId.set(-1);
+                count--;
+            } else {
+                throw new FixnumLockThreadIdException("Can not find thread with id: " + currentThreadId);
             }
-            if (pendingToBeUnregistered != null)
-                threads.remove(pendingToBeUnregistered);
-            else
-                throw new FixnumLockThreadIdException("Can not find thread with id: " + threadId + " in " + threads.toString());
         }
     }
 
     @Override
     public int getId() {
         long currentThreadId = Thread.currentThread().getId();
-        for (int i = 0; i < threads.size(); i++) {
-            if (threads.get(i) == currentThreadId) {
-                return i;
-            }
-        }
-        throw new FixnumLockThreadIdException("Can not find thread with id: " + currentThreadId + " in " + threads.toString());
+        if (localId.get() != -1 && threads.get(localId.get()) == currentThreadId)
+            return localId.get();
+        else
+            throw new FixnumLockThreadIdException("Can not find thread with id: " + currentThreadId);
     }
 
     public int currentlyRegisteredCount() {
-        return threads.size();
+        return count;
     }
 
     public void reset() {
-        synchronized (operationMutex) {
-            threads.clear();
+        synchronized (this) {
+            count = 0;
+            for (int i = 0; i < threads.size(); ++i) {
+                threads.set(i, -1L);
+            }
         }
     }
 }

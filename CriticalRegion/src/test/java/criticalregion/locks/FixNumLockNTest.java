@@ -1,26 +1,20 @@
 package criticalregion.locks;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 
 import static org.junit.Assert.*;
 
 public class FixNumLockNTest {
-    @Test
-    public void creationTest(){
-        List<Thread> threads = new ArrayList<>();
-        threads.add(new Thread());
-        threads.add(new Thread());
-        threads.add(new Thread());
-        int threadsCount = threads.size();
+    private FixNumLockN fixNumLockN;
 
-        // Empty threads.size()-1 num lock
-        FixNumLockN fixNumLockN = new FixNumLockN(threadsCount-1) {
+    @Before
+    public void initialize() {
+        fixNumLockN = new FixNumLockN(2) {
             @Override
             public void lock() {
             }
@@ -49,36 +43,166 @@ public class FixNumLockNTest {
                 return null;
             }
         };
+    }
 
-        Assert.assertEquals(0,fixNumLockN.currentlyRegisteredCount());
-        fixNumLockN.register(threads.get(0));
-        Assert.assertEquals(1,fixNumLockN.currentlyRegisteredCount());
-        fixNumLockN.register(threads.get(1));
-        Assert.assertEquals(2,fixNumLockN.currentlyRegisteredCount());
-        try{
-            fixNumLockN.register(threads.get(2));
-            Assert.assertTrue(false);
-        } catch (Exception e){
-            Assert.assertEquals(2,fixNumLockN.currentlyRegisteredCount());
+    public class TestThread extends Thread {
+        private boolean expectFail;
+
+        public TestThread(Runnable r, boolean expectFail) {
+            super(r);
+            this.expectFail = expectFail;
         }
-        try{
-            fixNumLockN.unregister(threads.get(2));
-            Assert.assertTrue(false);
-        } catch (Exception e){
-            Assert.assertEquals(2,fixNumLockN.currentlyRegisteredCount());
+
+        @Override
+        public void run() {
+            try {
+                super.run();
+                if (expectFail)
+                    Assert.assertTrue(false);
+            } catch (Exception e) {
+                if (!expectFail)
+                    Assert.assertTrue(false);
+            }
         }
-        fixNumLockN.unregister(threads.get(1));
-        Assert.assertEquals(1,fixNumLockN.currentlyRegisteredCount());
-        fixNumLockN.register(threads.get(2));
-        Assert.assertEquals(2,fixNumLockN.currentlyRegisteredCount());
-        try{
+    }
+
+    @Test
+    public void creation() {
+        TestThread threadA = new TestThread(() -> fixNumLockN.register(), false);
+        TestThread threadB = new TestThread(() -> fixNumLockN.register(), false);
+        threadA.start();
+        threadB.start();
+        try {
+            threadA.join();
+            threadB.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        Assert.assertEquals(2, fixNumLockN.currentlyRegisteredCount());
+    }
+
+    @Test
+    public void insertNotInsertable() {
+        TestThread threadA = new TestThread(() -> fixNumLockN.register(), false);
+        TestThread threadB = new TestThread(() -> fixNumLockN.register(), false);
+        TestThread threadC = new TestThread(() -> fixNumLockN.register(), true);
+        threadA.start();
+        threadB.start();
+        threadC.start();
+        try {
+            threadA.join();
+            threadB.join();
+            threadC.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test
+    public void deleteNotDeletable() {
+        TestThread threadA = new TestThread(() -> fixNumLockN.register(), false);
+        TestThread threadB = new TestThread(() -> fixNumLockN.register(), false);
+        TestThread threadC = new TestThread(() -> fixNumLockN.unregister(), true);
+        threadA.start();
+        threadB.start();
+        threadC.start();
+        try {
+            threadA.join();
+            threadB.join();
+            threadC.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test
+    public void insertTwice() {
+        TestThread threadA = new TestThread(() -> fixNumLockN.register(), false);
+        TestThread threadB = new TestThread(() -> {
+            fixNumLockN.register();
+            fixNumLockN.register();
+        }, false);
+        threadA.start();
+        threadB.start();
+        try {
+            threadA.join();
+            threadB.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        Assert.assertEquals(2, fixNumLockN.currentlyRegisteredCount());
+    }
+
+    @Test
+    public void insertDelete() {
+        TestThread threadA = new TestThread(() -> fixNumLockN.register(), false);
+        TestThread threadB = new TestThread(() -> {
+            fixNumLockN.register();
+            fixNumLockN.unregister();
+        }, false);
+        threadA.start();
+        threadB.start();
+        try {
+            threadA.join();
+            threadB.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        Assert.assertEquals(1, fixNumLockN.currentlyRegisteredCount());
+    }
+
+    @Test
+    public void insertDeleteTwice() {
+        TestThread threadA = new TestThread(() -> fixNumLockN.register(), false);
+        TestThread threadB = new TestThread(() -> {
+            fixNumLockN.register();
+            fixNumLockN.unregister();
+            fixNumLockN.unregister();
+        }, true);
+        threadA.start();
+        threadB.start();
+        try {
+            threadA.join();
+            threadB.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        Assert.assertEquals(1, fixNumLockN.currentlyRegisteredCount());
+    }
+
+    @Test
+    public void getId() {
+        TestThread threadA = new TestThread(() -> fixNumLockN.register(), false);
+        TestThread threadB = new TestThread(() -> {
+            fixNumLockN.register();
             fixNumLockN.getId();
-            Assert.assertTrue(false);
-        } catch (Exception e){
-            Assert.assertEquals(2,fixNumLockN.currentlyRegisteredCount());
+        }, false);
+        TestThread threadC = new TestThread(() -> fixNumLockN.getId(), true);
+        threadA.start();
+        threadB.start();
+        threadC.start();
+        try {
+            threadA.join();
+            threadB.join();
+            threadC.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
+    }
 
+    @Test
+    public void reset() {
+        TestThread threadA = new TestThread(() -> fixNumLockN.register(), false);
+        TestThread threadB = new TestThread(() -> fixNumLockN.register(), false);
+        threadA.start();
+        threadB.start();
+        try {
+            threadA.join();
+            threadB.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         fixNumLockN.reset();
-        Assert.assertEquals(0,fixNumLockN.currentlyRegisteredCount());
+        Assert.assertEquals(0, fixNumLockN.currentlyRegisteredCount());
     }
 }

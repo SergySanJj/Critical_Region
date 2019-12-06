@@ -6,13 +6,9 @@ public interface FixNumLock extends Lock {
 
     int getId();
 
-    void register(Thread thread);
+    void register();
 
-    void register(long threadId);
-
-    void unregister(Thread thread);
-
-    void unregister(long threadId);
+    void unregister();
 
     int threadsCount();
 }

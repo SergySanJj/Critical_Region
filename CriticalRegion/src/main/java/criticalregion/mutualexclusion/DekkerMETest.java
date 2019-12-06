@@ -9,7 +9,7 @@ public class DekkerMETest extends MutualExclusionTest<DekkerLock> {
 
     @Override
     public void runPrephaseActions() {
-        testableLock.register(Thread.currentThread());
+        testableLock.register();
     }
 
     @Override
