@@ -36,33 +36,10 @@ Following interfaces and abstractions are implemented:
 
 ## Mutual exclusion testing
 
-To create a new unit test, you have to extend ```MutualExclusionTest<LockClass>``` class by creating methods annotated as:
-- ```@Prephase ```
-- ```@LockAction```
-- ```@UnlockAction```
+To create a new unit test, you have to extend ```MutualExclusionTest<LockClass>``` class by implementing methods:
+- ```prephase ```
+- ```lockAction```
+- ```unlockAction```
 
 such methods will be called during testing with ```providesMutualExclusion(LockClass testableLock)``` method
-
-#### Example
-```java
-public class DekkerMETest extends MutualExclusionTest<DekkerLock> {
-    public DekkerMETest() {
-        super();
-    }
-
-    @Prephase
-    public void registerCurrentThread() {
-        testableLock.register(Thread.currentThread());
-    }
-
-    @LockAction
-    public void onLock(){
-        testableLock.lock();
-    }
-
-    @UnlockAction
-    public void onUnLock(){
-        testableLock.unlock();
-    }
-}
 ```
